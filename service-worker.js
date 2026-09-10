@@ -1,4 +1,4 @@
-const CACHE_NAME = "ghisa-cache-v1";
+const CACHE_NAME = "ghisa-cache-v2";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
@@ -26,22 +26,21 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+/* Network-first: while online you always get the latest version;
+   the cache is only used as a fallback when there's no connection. */
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
 
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req)
-        .then((res) => {
-          if (res && res.ok && req.url.startsWith(self.location.origin)) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => cached);
-    })
+    fetch(req)
+      .then((res) => {
+        if (res && res.ok && req.url.startsWith(self.location.origin)) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });
